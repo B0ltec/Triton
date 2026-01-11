@@ -1,37 +1,42 @@
-name: Test the VCPKG install
+name: Test the VCPKG install (Windows Only)
 
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  build-test-install:
-
-    runs-on: ${{ matrix.os }}
+  build-test-install-windows:
+    runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
-        os:
-          # - macOS-latest
-          # - ubuntu-latest
-          - windows-2022
+
+        arch: [x64, x86]
+        link_type: [dynamic, static]
         include:
-          - os: windows-2022
-            platform: windows
-            vcpkg-triplet: x64-windows-static-release-md
+          - arch: x64
+            link_type: dynamic
+            vcpkg-triplet: x64-windows-release-md
             cmake-preset: windows-x64
             python-executable: python
-          # - os: ubuntu-latest
-          #   platform: linux
-          #   vcpkg-triplet: x64-linux-release
-          #   cmake-preset: linux-x64
-          #   python-executable: python3
-          # - os: macOS-latest
-          #   platform: macos
-          #   vcpkg-triplet: x64-osx-release
-          #   cmake-preset: macos-x64
-          #   python-executable: python3
+
+          - arch: x64
+            link_type: static
+            vcpkg-triplet: x64-windows-static-release-md
+            cmake-preset: windows-x64-static
+            python-executable: python
+
+          - arch: x86
+            link_type: dynamic
+            vcpkg-triplet: x86-windows-release-md
+            cmake-preset: windows-x86
+            python-executable: python
+
+          - arch: x86
+            link_type: static
+            vcpkg-triplet: x86-windows-static-release-md
+            cmake-preset: windows-x86-static
+            python-executable: python
 
     steps:
-
     - uses: actions/checkout@v4
 
     - uses: actions/checkout@v4
@@ -50,46 +55,41 @@ jobs:
       with:
         python-version: '3.11'
 
+   
     - uses: ilammy/msvc-dev-cmd@v1
-      name: Setup Windows dev environment
+      name: Setup Windows dev environment (${{ matrix.arch }})
       with:
-        arch: 'x64'
-      if: ${{ matrix.platform == 'windows' }}
+        arch: ${{ matrix.arch }}
 
-    - name: Configure (Windows)
-      if: ${{ matrix.platform == 'windows' }}
+   
+    - name: Configure (Windows ${{ matrix.arch }}-${{ matrix.link_type }})
       run: |
-        cmake --preset=${{ matrix.cmake-preset }} -DBUILD_SHARED_LIBS:BOOL=ON -DVCPKG_OVERLAY_TRIPLETS:PATH=${{ github.workspace }}\vcpkg\triplets -DVCPKG_TARGET_TRIPLET:STRING=${{ matrix.vcpkg-triplet }}
+        cmake --preset=${{ matrix.cmake-preset }} `
+          -DBUILD_SHARED_LIBS:BOOL=${{ matrix.link_type == 'dynamic' && 'ON' || 'OFF' }} `
+          -DVCPKG_OVERLAY_TRIPLETS:PATH=${{ github.workspace }}\vcpkg\triplets `
+          -DVCPKG_TARGET_TRIPLET:STRING=${{ matrix.vcpkg-triplet }}
       env:
         VCPKG_ROOT: ${{ github.workspace }}/_vcpkg
         VCPKG_FEATURE_FLAGS: manifests,versions,binarycaching,registries
 
-    - name: Configure (UNIX)
-      if: ${{ matrix.platform != 'windows' }}
-      run: |
-        python -m pip install importlib-resources
-        cmake --preset=${{ matrix.cmake-preset }} -DBUILD_SHARED_LIBS:BOOL=ON -DVCPKG_OVERLAY_TRIPLETS:PATH=${{ github.workspace }}/vcpkg/triplets -DVCPKG_TARGET_TRIPLET:STRING=${{ matrix.vcpkg-triplet }}
-      env:
-        VCPKG_ROOT: ${{ github.workspace }}/_vcpkg
-        VCPKG_FEATURE_FLAGS: manifests,versions,binarycaching,registries
-
-    - name: Build
+    - name: Build (Windows ${{ matrix.arch }}-${{ matrix.link_type }})
       run: |
         cmake --build --preset build-${{ matrix.cmake-preset }} --config Release
 
-    - name: Test
+    
+    - name: Test (Windows ${{ matrix.arch }}-${{ matrix.link_type }})
       run: |
         ${{ matrix.python-executable }} --version
         ${{ matrix.python-executable }} -m pip install lief==0.15.1 unicorn z3-solver
         ctest --preset test-${{ matrix.cmake-preset }} -C Release --output-on-failure
 
-    - name: Install
+    - name: Install (Windows ${{ matrix.arch }}-${{ matrix.link_type }})
       run: |
         cmake --build --preset build-${{ matrix.cmake-preset }} --config Release --target install
 
-    - name: Upload
+    - name: Upload Artifact (Windows ${{ matrix.arch }}-${{ matrix.link_type }})
       uses: actions/upload-artifact@v4
       with:
-        name: triton-x64-${{ matrix.platform }}
+        name: triton-windows-${{ matrix.arch }}-${{ matrix.link_type }}
         path: ${{ github.workspace }}/out/install/${{ matrix.cmake-preset }}
         if-no-files-found: warn
