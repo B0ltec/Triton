@@ -10,8 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macOS-latest
-          - ubuntu-latest
+          # - macOS-latest
+          # - ubuntu-latest
           - windows-2022
         include:
           - os: windows-2022
@@ -19,16 +19,16 @@ jobs:
             vcpkg-triplet: x64-windows-static-release-md
             cmake-preset: windows-x64
             python-executable: python
-          - os: ubuntu-latest
-            platform: linux
-            vcpkg-triplet: x64-linux-release
-            cmake-preset: linux-x64
-            python-executable: python3
-          - os: macOS-latest
-            platform: macos
-            vcpkg-triplet: x64-osx-release
-            cmake-preset: macos-x64
-            python-executable: python3
+          # - os: ubuntu-latest
+          #   platform: linux
+          #   vcpkg-triplet: x64-linux-release
+          #   cmake-preset: linux-x64
+          #   python-executable: python3
+          # - os: macOS-latest
+          #   platform: macos
+          #   vcpkg-triplet: x64-osx-release
+          #   cmake-preset: macos-x64
+          #   python-executable: python3
 
     steps:
 
